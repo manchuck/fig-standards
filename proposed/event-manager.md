@@ -3,7 +3,7 @@ Event Manager interfaces
 
 Event Dispatching allows developer to inject logic into an application easily.
 Many frameworks implement some form of a event dispatching that allows users to
-inject functionality with the need to extend classes.
+inject functionality without the need to extend classes.
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
 "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be
@@ -19,7 +19,7 @@ to create libraries that can interact with many frameworks in a common fashion.
 Some examples:
 
 * Security framework that will prevent saving/accessing data when a user
-doesn't have permission.
+does'nt have permission.
 * A Common full page caching system
 * Logging package to track all actions taken within the application
 
@@ -32,24 +32,22 @@ ex. 'foo.bar.baz.bat'
 
 *   **Listener** - A list of callbacks that are passed the EventInterface and
 MAY return a result.  Listeners MAY be attached to the EventManager with a
-priority.  Listeners MUST BE called based on priority.
+priority.  Listeners MUST BE called based on priority until a listener calls
+```stop()``` on the event.
 
 ## Components
 
 There are 2 interfaces needed for managing events:
 
 1. An event object which contains all the information about the event.
-2. The event manager which holds all the listeners
+2. The event manager which holds all the listeners.
 
 ### EventInterface
 
 The EventInterface defines the methods needed to dispatch an event.  Each event
-MUST contain a event name in order trigger the listeners. Each event MAY have a
-target which is an object that is the context the event is being triggered for.
-OPTIONALLY the event can have additional parameters for use within the event.
-
-The event MUST contain a propegation flag that singles the EventManager to stop
-passing along the event to other listeners.
+MUST contain a event name in order trigger the listeners. Each event MUST have a
+target which is an object that is the context the event is being triggered for,
+and MUST have the name of the event accessible.
 
 ```php
 
@@ -60,6 +58,12 @@ namespace Psr\EventManager;
  */
 interface EventInterface
 {
+    /**
+     * @param string $name
+     * @param mixed $target
+     */
+    public function __construct($name, $target);
+
     /**
      * Get event name
      *
@@ -75,65 +79,27 @@ interface EventInterface
     public function getTarget();
 
     /**
-     * Get parameters passed to the event
-     *
-     * @return array
+     * Stops further events from continuing
      */
-    public function getParams();
+    public functiion stop();
 
     /**
-     * Get a single parameter by name
-     *
-     * @param  string $name
-     * @return mixed
-     */
-    public function getParam($name);
-
-    /**
-     * Set the event name
-     *
-     * @param  string $name
-     * @return void
-     */
-    public function setName($name);
-
-    /**
-     * Set the event target
-     *
-     * @param  null|string|object $target
-     * @return void
-     */
-    public function setTarget($target);
-
-    /**
-     * Set event parameters
-     *
-     * @param  array $params
-     * @return void
-     */
-    public function setParams(array $params);
-
-    /**
-     * Indicate whether or not to stop propagating this event
-     *
-     * @param  bool $flag
-     */
-    public function stopPropagation();
-
-    /**
-     * Has this event indicated event propagation should stop?
+     * Used by the EM to check if the stop flag has been set
      *
      * @return bool
      */
-    public function isPropagationStopped();
+    public function hasStopped();
 }
 ```
 
 ### EventManagerInterface
 
-The EventManager holds all the listeners for a particular event.  Since an
-event can have many listeners that each return a result, the EventManager
- MUST return the result from the last listener.
+The Event Manager holds all the attached listeners and is responsible for calling
+all the listeners when an event is fired.  When ```trigger()``` is called, the EM
+MUST call all listeners in order based on the priority from when they were attached.
+The EM MUST stop called listeners if the events ```stop()``` is called on the event.
+The EM will confirm a listener requested an event from stopping by calling
+```hasStopped()``` on the event.
 
 ```php
 
@@ -164,23 +130,14 @@ interface EventManagerInterface
     public function detach($event, $callback);
 
     /**
-     * Clear all listeners for a given event
-     *
-     * @param  string $event
-     * @return void
-     */
-    public function clearListeners($event);
-
-    /**
      * Trigger an event
      *
      * Can accept an EventInterface or will create one if not passed
      *
      * @param  string|EventInterface $event
      * @param  object|string $target
-     * @param  array|object $argv
      * @return mixed
      */
-    public function trigger($event, $target = null, $argv = array());
+    public function trigger($event, $target = null);
 }
 ```
